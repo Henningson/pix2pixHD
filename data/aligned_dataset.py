@@ -1,5 +1,7 @@
 import os.path
-from data.base_dataset import BaseDataset, get_params, get_transform, normalize
+import torch
+import torchvision.transforms as transforms
+from data.base_dataset import BaseDataset, get_params, get_transform, normalize, cast_PIL_to_tensor
 from data.image_folder import make_dataset
 from PIL import Image
 
@@ -12,6 +14,11 @@ class AlignedDataset(BaseDataset):
         dir_A = '_A' if self.opt.label_nc == 0 else '_label'
         self.dir_A = os.path.join(opt.dataroot, opt.phase + dir_A)
         self.A_paths = sorted(make_dataset(self.dir_A))
+
+        ### input Light
+        dir_LIGHTING = '_lighting'
+        self.dir_LIGHTING = os.path.join(opt.dataroot, opt.phase + dir_LIGHTING)
+        self.LIGHTING_paths = sorted(make_dataset(self.dir_LIGHTING))
 
         ### input B (real images)
         if opt.isTrain or opt.use_encoded_image:
@@ -34,7 +41,7 @@ class AlignedDataset(BaseDataset):
       
     def __getitem__(self, index):        
         ### input A (label maps)
-        A_path = self.A_paths[index]              
+        A_path = self.A_paths[0]              
         A = Image.open(A_path)        
         params = get_params(self.opt, A.size)
         if self.opt.label_nc == 0:
@@ -43,6 +50,12 @@ class AlignedDataset(BaseDataset):
         else:
             transform_A = get_transform(self.opt, params, method=Image.NEAREST, normalize=False)
             A_tensor = transform_A(A) * 255.0
+
+        #A_tensor = torch.ones(A_tensor.shape)
+
+        Lighting_path = self.LIGHTING_paths[index]
+        Lighting_image = Image.open(Lighting_path)  
+        Lighting_image = cast_PIL_to_tensor(transforms.Resize([512, 512])(Lighting_image))
 
         B_tensor = inst_tensor = feat_tensor = 0
         ### input B (real images)
@@ -64,8 +77,8 @@ class AlignedDataset(BaseDataset):
                 norm = normalize()
                 feat_tensor = norm(transform_A(feat))                            
 
-        input_dict = {'label': A_tensor, 'inst': inst_tensor, 'image': B_tensor, 
-                      'feat': feat_tensor, 'path': A_path}
+        input_dict = {'label': A_tensor, 'lighting': Lighting_image, 'inst': inst_tensor, 'image': B_tensor, 
+                      'feat': feat_tensor, 'path': Lighting_path}
 
         return input_dict
 

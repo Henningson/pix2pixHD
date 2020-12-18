@@ -30,6 +30,9 @@ def get_params(opt, size):
     flip = random.random() > 0.5
     return {'crop_pos': (x, y), 'flip': flip}
 
+def cast_PIL_to_tensor(image):
+    return transforms.ToTensor()(image)
+
 def get_transform(opt, params, method=Image.BICUBIC, normalize=True):
     transform_list = []
     if 'resize' in opt.resize_or_crop:
